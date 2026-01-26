@@ -1,0 +1,34 @@
+{
+  "name": "groq-speech-to-text-mcp-server",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Groq Speech To Text MCP Server (whisper-large-v3-turbo)",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "dist/index.js",
+  "bin": {
+    "groq-speech-to-text-mcp-server": "dist/index.js",
+    "groq-stt-mcp-server": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.json && node -e \"const fs=require('node:fs');const p='dist/index.js';let s=fs.readFileSync(p,'utf8');if(!s.startsWith('#!')){s='#!/usr/bin/env node\\n'+s;fs.writeFileSync(p,s,'utf8');}fs.chmodSync(p,0o755);\"",
+    "prepack": "npm run build",
+    "start": "node dist/index.js",
+    "dev": "node --env-file=.env.local --enable-source-maps dist/index.js",
+    "test": "npm run build && node --test dist/tests/*.test.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.3"
+  }
+}
