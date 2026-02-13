@@ -105,7 +105,7 @@ server.registerTool(
       `{"items":[{"file_path":"/absolute/path/to/audio.mp3","save_as":"audio.txt"}],"concurrency":4}\n\n` +
       "Inputs:\n" +
       "- items: array of sources. Each item provides one source field and optional save_as/id.\n" +
-      "- source fields: file_path | path | audio_path | url\n" +
+      "- source fields: file_path | url\n" +
       "- save_as: output filename under ./transcripts\n",
     inputSchema: TranscribeAudioInputSchema,
     outputSchema: TranscribeAudioListOutputSchema,

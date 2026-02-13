@@ -17,6 +17,25 @@ export enum TimestampGranularity {
   SEGMENT = "segment"
 }
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0;
+}
+
+function validateSaveAs(
+  saveAs: string | undefined,
+  ctx: z.RefinementCtx,
+  path: Array<string | number> = ["save_as"]
+): void {
+  if (!isNonEmptyString(saveAs)) return;
+  if (saveAs.includes("/") || saveAs.includes("\\") || saveAs.includes("\0")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "save_as should be a filename like \"intro.txt\".",
+      path
+    });
+  }
+}
+
 const TranscribeAudioOptionsSchema = z
   .object({
   model: z
@@ -93,16 +112,6 @@ export const TranscribeAudioItemSchema = z
       .min(1)
       .optional()
       .describe("Local path to an audio file."),
-    path: z
-      .string()
-      .min(1)
-      .optional()
-      .describe("Local path to an audio file."),
-    audio_path: z
-      .string()
-      .min(1)
-      .optional()
-      .describe("Local path to an audio file."),
     url: z
       .string()
       .url()
@@ -111,66 +120,28 @@ export const TranscribeAudioItemSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
-    const hasFile = typeof value.file_path === "string" && value.file_path.length > 0;
-    const hasPath = typeof value.path === "string" && value.path.length > 0;
-    const hasAudioPath = typeof value.audio_path === "string" && value.audio_path.length > 0;
-    const hasUrl = typeof value.url === "string" && value.url.length > 0;
-    const localCount = (hasFile ? 1 : 0) + (hasPath ? 1 : 0) + (hasAudioPath ? 1 : 0);
-    const hasLocal = localCount > 0;
-    if (localCount > 1) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Choose one local path field: file_path, path, or audio_path.",
-        path: ["file_path"]
-      });
-    }
-
-    if (hasLocal === hasUrl) {
+    const hasFile = isNonEmptyString(value.file_path);
+    const hasUrl = isNonEmptyString(value.url);
+    if (hasFile === hasUrl) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Choose one source type for each item: a local file path or a public url."
       });
     }
 
-    if (typeof value.save_as === "string") {
-      if (value.save_as.includes("/") || value.save_as.includes("\\") || value.save_as.includes("\0")) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "save_as should be a filename like \"intro.txt\"."
-        });
-      }
-    }
+    validateSaveAs(value.save_as, ctx, ["save_as"]);
   });
+
+export type TranscribeAudioItem = z.infer<typeof TranscribeAudioItemSchema>;
 
 const TranscribeAudioToolInputSchemaRaw = z
   .object({
     items: z
       .array(TranscribeAudioItemSchema)
-      .optional()
-      .default([])
+      .min(1)
       .describe(
         "Audio sources to transcribe. Each item provides exactly one of: file_path (local file) or url (public URL)."
       ),
-    file_path: z
-      .string()
-      .min(1)
-      .optional()
-      .describe("A single local audio file path. Shortcut for items: [{ file_path }]."),
-    url: z
-      .string()
-      .url()
-      .optional()
-      .describe("A single public audio URL. Shortcut for items: [{ url }]."),
-    save_as: z
-      .string()
-      .min(1)
-      .optional()
-      .describe("Output filename under ./transcripts for the single input shortcut."),
-    output_dir: z
-      .string()
-      .min(1)
-      .optional()
-      .describe("Optional output directory label for compatibility; transcripts are saved under ./transcripts."),
     ...TranscribeAudioOptionsSchema.shape,
     concurrency: z
       .number()
@@ -191,15 +162,6 @@ const TranscribeAudioToolInputSchemaRaw = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "To request timestamps, set response_format to \"verbose_json\" and provide timestamp_granularities."
-      });
-    }
-
-    const hasLegacyFile = typeof value.file_path === "string" && value.file_path.length > 0;
-    const hasLegacyUrl = typeof value.url === "string" && value.url.length > 0;
-    if ((hasLegacyFile ? 1 : 0) + (hasLegacyUrl ? 1 : 0) > 1) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Choose one source type for the single input shortcut: file_path or url."
       });
     }
 

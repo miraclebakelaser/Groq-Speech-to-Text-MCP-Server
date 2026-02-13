@@ -3,9 +3,8 @@ import assert from "node:assert/strict";
 
 import { TranscribeAudioInputSchema, GroqAudioResponseFormat } from "../schemas/transcribe.js";
 
-test("transcribe schema: defaults items to [] for empty input", () => {
-  const parsed = TranscribeAudioInputSchema.parse({});
-  assert.deepEqual(parsed.items, []);
+test("transcribe schema: requires items", () => {
+  assert.throws(() => TranscribeAudioInputSchema.parse({}), /items/i);
 });
 
 test("transcribe schema: each item chooses file_path or url", () => {
@@ -47,18 +46,22 @@ test("transcribe schema: item ids must be unique when provided", () => {
   );
 });
 
-test("transcribe schema: accepts legacy single shape and wraps as items[0]", () => {
-  const parsed = TranscribeAudioInputSchema.parse({ url: "https://example.com/a.wav" });
-  assert.equal(parsed.items.length, 0);
-  assert.equal((parsed as any).url, "https://example.com/a.wav");
+test("transcribe schema: rejects legacy top-level shortcut fields", () => {
+  assert.throws(
+    () => TranscribeAudioInputSchema.parse({ url: "https://example.com/a.wav" }),
+    /unrecognized key/i
+  );
 });
 
-test("transcribe schema: accepts common aliases path/audio_path and maps to file_path", () => {
-  const parsedPath = TranscribeAudioInputSchema.parse({ items: [{ path: "/abs/a.mp3" }] });
-  assert.equal((parsedPath.items[0] as any).path, "/abs/a.mp3");
-
-  const parsedAudioPath = TranscribeAudioInputSchema.parse({ items: [{ audio_path: "/abs/b.mp3" }] });
-  assert.equal((parsedAudioPath.items[0] as any).audio_path, "/abs/b.mp3");
+test("transcribe schema: rejects alias fields path/audio_path", () => {
+  assert.throws(
+    () => TranscribeAudioInputSchema.parse({ items: [{ path: "/abs/a.mp3" }] }),
+    /unrecognized key/i
+  );
+  assert.throws(
+    () => TranscribeAudioInputSchema.parse({ items: [{ audio_path: "/abs/b.mp3" }] }),
+    /unrecognized key/i
+  );
 });
 
 test("transcribe schema: default model is whisper-large-v3-turbo", () => {

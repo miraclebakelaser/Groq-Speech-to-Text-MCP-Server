@@ -102,43 +102,13 @@ test("transcribeAudioTool: errors when GROQ_API_KEY is missing", async () => {
   }
 });
 
-test("transcribeAudioTool: returns a helpful usage error when items are empty", async () => {
-  const originalApiKey = process.env.GROQ_API_KEY;
-  try {
-    process.env.GROQ_API_KEY = "test-key";
-    const parsed = TranscribeAudioInputSchema.parse({});
-    const result = await transcribeAudioTool(parsed);
-    assert.equal(result.isError, true);
-    assert.match(result.contentText, /provide at least one audio source/i);
-    assert.match(result.contentText, /\"items\"/i);
-    assert.equal((result.structured as any).error, "invalid_input");
-  } finally {
-    process.env.GROQ_API_KEY = originalApiKey;
-  }
+test("transcribeAudioTool: schema rejects empty input", () => {
+  assert.throws(() => TranscribeAudioInputSchema.parse({}), /items/i);
 });
 
-test("transcribeAudioTool: accepts legacy single shape (url) and runs one item", async () => {
-  const originalFetch = globalThis.fetch;
-  const originalApiKey = process.env.GROQ_API_KEY;
-  const originalCwd = process.cwd();
-
-  try {
-    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "groq-stt-"));
-    process.chdir(dir);
-    process.env.GROQ_API_KEY = "test-key";
-    globalThis.fetch = (async () => textResponse(200, "hello", "text/plain")) as unknown as typeof fetch;
-
-    const parsed = TranscribeAudioInputSchema.parse({ url: "https://example.com/a.wav" });
-    const result = await transcribeAudioTool(parsed);
-
-    assert.equal(result.isError ?? false, false);
-    const structured = result.structured as any;
-    assert.equal(structured.summary.total, 1);
-    assert.equal(structured.results[0].ok, true);
-    assert.equal(structured.results[0].output.transcript, "hello");
-  } finally {
-    globalThis.fetch = originalFetch;
-    process.env.GROQ_API_KEY = originalApiKey;
-    process.chdir(originalCwd);
-  }
+test("transcribeAudioTool: schema rejects legacy single-input shortcut", () => {
+  assert.throws(
+    () => TranscribeAudioInputSchema.parse({ url: "https://example.com/a.wav" }),
+    /unrecognized key/i
+  );
 });

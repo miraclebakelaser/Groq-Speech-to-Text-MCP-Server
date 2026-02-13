@@ -1,6 +1,7 @@
 import {
   GroqAudioResponseFormat,
   OutputFormat,
+  TranscribeAudioItem,
   TranscribeAudioInput,
   TranscribeAudioRequest
 } from "../schemas/transcribe.js";
@@ -429,43 +430,9 @@ export async function transcribeAudioTool(params: TranscribeAudioInput): Promise
     };
   }
 
-  const legacyLocal =
-    typeof (params as any).file_path === "string" && ((params as any).file_path as string).length > 0
-      ? ((params as any).file_path as string)
-      : undefined;
-  const legacyUrl =
-    typeof (params as any).url === "string" && ((params as any).url as string).length > 0
-      ? ((params as any).url as string)
-      : undefined;
-  const legacySaveAs =
-    typeof (params as any).save_as === "string" && ((params as any).save_as as string).length > 0
-      ? ((params as any).save_as as string)
-      : undefined;
+  const effectiveItems = params.items;
 
-  const legacyItem =
-    legacyLocal || legacyUrl
-      ? [
-          {
-            ...(legacyLocal ? { file_path: legacyLocal } : {}),
-            ...(legacyUrl ? { url: legacyUrl } : {}),
-            ...(legacySaveAs ? { save_as: legacySaveAs } : {})
-          }
-        ]
-      : [];
-
-  const effectiveItems = (Array.isArray(params.items) && params.items.length > 0 ? params.items : legacyItem).map(
-    (item: any) => ({
-      ...item,
-      ...(typeof item.file_path !== "string" || item.file_path.length === 0
-        ? {
-            ...(typeof item.path === "string" && item.path.length > 0 ? { file_path: item.path } : {}),
-            ...(typeof item.audio_path === "string" && item.audio_path.length > 0 ? { file_path: item.audio_path } : {})
-          }
-        : {})
-    })
-  );
-
-  if (!Array.isArray(effectiveItems) || effectiveItems.length === 0) {
+  if (effectiveItems.length === 0) {
     const exampleSingle = { items: [{ file_path: "/absolute/path/to/audio.mp3" }] };
     const exampleMany = {
       items: [
@@ -550,7 +517,7 @@ export async function transcribeAudioTool(params: TranscribeAudioInput): Promise
       include_metadata: params.include_metadata,
       output_format: params.output_format,
       concurrency: params.concurrency,
-      items: effectiveItems.map((i: any) => ({
+      items: effectiveItems.map((i: TranscribeAudioItem) => ({
         ...(i.id ? { id: i.id } : {}),
         ...(i.file_path ? { file_path: i.file_path } : {}),
         ...(i.url ? { url: i.url } : {}),
